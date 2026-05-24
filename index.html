@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Francesco Serangeli</title>
+  <meta name="description" content="Francesco Serangeli — Developer, political activist, cook.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- FS LOADER -->
+  <div id="fs-loader">
+    <div class="loader-panel loader-panel-top"></div>
+    <div class="loader-panel loader-panel-bottom"></div>
+    <div class="loader-core">
+      <div class="fs-monogram">
+        <span class="letter" id="letter-f">F</span>
+        <span class="letter" id="letter-s">S</span>
+      </div>
+      <div class="loader-progress-wrap">
+        <div class="loader-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE TRANSITION -->
+  <div id="page-transition" aria-hidden="true">
+    <div class="pt-curtain"></div>
+    <div class="pt-monogram">FS</div>
+  </div>
+
+  <!-- CURSOR -->
+  <div id="cursor" aria-hidden="true">
+    <div class="cursor-dot"></div>
+    <div class="cursor-ring"></div>
+  </div>
+
+  <!-- TOP NAV -->
+  <nav id="top-nav" aria-label="Site navigation">
+    <a class="nav-logo" href="#" data-to="0">FS</a>
+    <ul class="nav-links" role="list">
+      <li><a class="nav-link active" href="#home"      data-to="0">Home</a></li>
+      <li><a class="nav-link"        href="#about"     data-to="1">About</a></li>
+      <li><a class="nav-link"        href="#projects"  data-to="2">Projects</a></li>
+      <li><a class="nav-link"        href="#elsewhere" data-to="3">Elsewhere</a></li>
+      <li><a class="nav-link"        href="#gallery"   data-to="4">Gallery</a></li>
+      <li><a class="nav-link"        href="#contact"   data-to="5">Contact</a></li>
+    </ul>
+    <div class="nav-rule"></div>
+  </nav>
+
+  <!-- SIDE DOTS -->
+  <div id="side-dots" role="navigation" aria-label="Section navigation">
+    <button class="dot active" data-idx="0" aria-label="Home"></button>
+    <button class="dot"        data-idx="1" aria-label="About"></button>
+    <button class="dot"        data-idx="2" aria-label="Projects"></button>
+    <button class="dot"        data-idx="3" aria-label="Elsewhere"></button>
+    <button class="dot"        data-idx="4" aria-label="Gallery"></button>
+    <button class="dot"        data-idx="5" aria-label="Contact"></button>
+  </div>
+
+  <!-- SECTION COUNTER -->
+  <div id="section-counter" aria-hidden="true">
+    <span id="counter-current">01</span>
+    <span class="counter-sep"></span>
+    <span class="counter-total">06</span>
+  </div>
+
+  <main id="fp">
+
+    <!-- 00 · HOME -->
+    <section class="s" id="home" data-index="0">
+      <div class="s-inner">
+        <div class="hero">
+          <div class="eyebrow">
+            <span class="eyebrow-line"></span>
+            <span class="eyebrow-text">Developer &nbsp;·&nbsp; Activist &nbsp;·&nbsp; Cook</span>
+          </div>
+          <h1 class="hero-name">
+            <span class="clip"><em class="up">FRANCESCO</em></span>
+            <span class="clip"><em class="up d1">SERANGELI</em></span>
+          </h1>
+          <p class="hero-sub clip"><em class="up d2">I build things, fight for things, and feed people.</em></p>
+          <div class="hero-actions clip">
+            <em class="up d3">
+              <a class="btn-link" href="#about" data-to="1">
+                <span>Learn more</span>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+              <a class="btn-link btn-ghost" href="#contact" data-to="5">
+                <span>Say hello</span>
+              </a>
+            </em>
+          </div>
+        </div>
+        <div class="hero-bg-number" aria-hidden="true">01</div>
+        <div class="scroll-indicator" aria-hidden="true">
+          <div class="scroll-track"><div class="scroll-thumb"></div></div>
+          <span>Scroll</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 01 · ABOUT -->
+    <section class="s" id="about" data-index="1">
+      <div class="s-inner">
+        <div class="two-col">
+          <div class="col-meta">
+            <span class="tag-label">About</span>
+            <span class="tag-num">02</span>
+          </div>
+          <div class="col-body">
+            <h2 class="section-heading">
+              <span class="clip"><em class="up">More than</em></span>
+              <span class="clip"><em class="up d1">one thing</em></span>
+              <span class="clip"><em class="up d2">at a time.</em></span>
+            </h2>
+            <p class="body-text clip"><em class="up d3">
+              I'm Francesco — based in Belgium, and impossible to file under a single category. I write software for problems I actually care about, show up in rooms where politics gets decided, and spend unreasonable amounts of time thinking about what to cook next. This is where all of that lives together.
+            </em></p>
+            <div class="stat-row">
+              <div class="stat clip">
+                <em class="up d4">
+                  <span class="stat-label">Based in</span>
+                  <span class="stat-val">Belgium</span>
+                </em>
+              </div>
+              <div class="stat clip">
+                <em class="up d4">
+                  <span class="stat-label">Online</span>
+                  <span class="stat-val">
+                    <a href="https://github.com/aerusW" target="_blank" rel="noopener">aerusW ↗</a>
+                  </span>
+                </em>
+              </div>
+              <div class="stat clip">
+                <em class="up d5">
+                  <span class="stat-label">Interests</span>
+                  <span class="stat-val">Code · Politics · Food</span>
+                </em>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="hero-bg-number" aria-hidden="true">02</div>
+      </div>
+    </section>
+
+    <!-- 02 · PROJECTS -->
+    <section class="s" id="projects" data-index="2">
+      <div class="s-inner">
+        <div class="work-head">
+          <div class="col-meta">
+            <span class="tag-label">Projects</span>
+            <span class="tag-num">03</span>
+          </div>
+          <h2 class="section-heading tight">
+            <span class="clip"><em class="up">Open</em></span>
+            <span class="clip"><em class="up d1">source work.</em></span>
+          </h2>
+        </div>
+        <!-- populated by GitHub API -->
+        <div id="project-list" class="project-list">
+          <div id="gh-loading" class="gh-state">
+            <span class="gh-spinner"></span>
+            <span class="gh-msg">Fetching from GitHub…</span>
+          </div>
+        </div>
+        <div id="gh-error" class="gh-state gh-error" style="display:none">
+          <span class="gh-msg">Couldn't reach GitHub right now. <a href="https://github.com/aerusW" target="_blank" rel="noopener">See profile ↗</a></span>
+        </div>
+      </div>
+      <div class="hero-bg-number" aria-hidden="true">03</div>
+    </section>
+
+    <!-- 03 · ELSEWHERE -->
+    <section class="s" id="elsewhere" data-index="3">
+      <div class="s-inner">
+        <div class="two-col">
+          <div class="col-meta">
+            <span class="tag-label">Elsewhere</span>
+            <span class="tag-num">04</span>
+          </div>
+          <div class="col-body">
+            <h2 class="section-heading tight">
+              <span class="clip"><em class="up">Beyond the screen.</em></span>
+            </h2>
+            <div class="elsewhere-grid">
+
+              <div class="el-block">
+                <div class="el-label">Activism</div>
+                <p class="el-text">
+                  Politics isn't something I watch from the outside. I've been involved in grassroots organizing, youth movements, and the kind of work that doesn't make headlines but moves things forward. I believe in showing up.
+                </p>
+                <!-- drop a link here if you have one -->
+              </div>
+
+              <div class="el-block">
+                <div class="el-label">Kitchen</div>
+                <p class="el-text">
+                  Cooking is where I actually slow down. Regional Italian technique, fermentation, bread from scratch — the kind of stuff that requires patience and rewards attention. If you want the sourdough recipe, just ask.
+                </p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="hero-bg-number" aria-hidden="true">04</div>
+      </div>
+    </section>
+
+    <!-- 04 · GALLERY -->
+    <section class="s" id="gallery" data-index="4">
+      <div class="s-inner s-inner--gallery">
+        <div class="gallery-head">
+          <div class="col-meta">
+            <span class="tag-label">Gallery</span>
+            <span class="tag-num">05</span>
+          </div>
+          <h2 class="section-heading tight">
+            <span class="clip"><em class="up">In pictures.</em></span>
+          </h2>
+        </div>
+        <div class="gallery-grid">
+          <figure class="gal-item">
+            <img src="Img/square clock.JPG" alt="Clock tower, Brussels">
+            <figcaption>Clock tower, Brussels</figcaption>
+          </figure>
+          <figure class="gal-item">
+            <img src="Img/Risotto.jpg" alt="Red risotto, Pontedera">
+            <figcaption>Red risotto, Pontedera</figcaption>
+          </figure>
+          <figure class="gal-item">
+            <img src="Img/GiovaniSI.jpg" alt="Giovani SI, Montecatini">
+            <figcaption>Giovani SI, Montecatini</figcaption>
+          </figure>
+          <figure class="gal-item">
+            <img src="Img/vsco.png" alt="GiovaniSI with a very mean face, Montecatini">
+            <figcaption>GiovaniSI with a very mean face, Montecatini</figcaption>
+          </figure>
+          <figure class="gal-item">
+            <img src="Img/1761656689369.jpg" alt="Next Generation Fest 2025">
+            <figcaption>Next Generation Fest 2025</figcaption>
+          </figure>
+        </div>
+      </div>
+      <div class="hero-bg-number" aria-hidden="true">05</div>
+    </section>
+
+    <!-- 05 · CONTACT -->
+    <section class="s" id="contact" data-index="5">
+      <div class="s-inner">
+        <div class="contact-wrap">
+          <div class="col-meta">
+            <span class="tag-label">Contact</span>
+            <span class="tag-num">06</span>
+          </div>
+          <h2 class="contact-heading">
+            <span class="clip"><em class="up">Talk to me</em></span>
+            <span class="clip"><em class="up d1">about anything.</em></span>
+          </h2>
+          <p class="contact-sub clip"><em class="up d2">Code, campaigns, or what to eat tonight.</em></p>
+          <div class="contact-email-wrap clip">
+            <em class="up d3">
+              <a class="contact-email" href="mailto:francesco.serangeli@proton.me">
+                <span>francesco.serangeli@proton.me</span>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            </em>
+          </div>
+          <div class="social-row clip">
+            <em class="up d4">
+              <a class="social-link" href="https://github.com/aerusW" target="_blank" rel="noopener">GitHub</a>
+              <span class="social-divider">—</span>
+              <a class="social-link" href="#" target="_blank" rel="noopener">LinkedIn</a>
+            </em>
+          </div>
+          <footer class="site-footer">
+            <span>© 2026 Francesco Serangeli</span>
+            <span>Made in Italy</span>
+          </footer>
+        </div>
+        <div class="hero-bg-number" aria-hidden="true">06</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
