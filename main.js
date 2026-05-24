@@ -31,6 +31,9 @@ const cursorEl  = document.getElementById('cursor');
 const cDot      = cursorEl.querySelector('.cursor-dot');
 const cRing     = cursorEl.querySelector('.cursor-ring');
 
+const heroName  = document.querySelector('.hero-name');
+const glitchLn  = document.getElementById('glitch-line');
+
 // ── Cursor ─────────────────────────────────────────
 let mx = 0, my = 0, rx = 0, ry = 0;
 
@@ -74,6 +77,7 @@ function onLoaderDone() {
   loader.style.display = 'none';
   loaded = true;
   activateSection(0, false);
+  scheduleGlitch();
 }
 
 // ── Section activation ─────────────────────────────
@@ -368,6 +372,22 @@ function applyJustified() {
 function onGalleryActivate() {
   galSectionShown = true;
   if (galImgsReady) requestAnimationFrame(applyJustified);
+}
+
+// ── Glitch ─────────────────────────────────────────
+function triggerGlitch() {
+  if (!heroName) { scheduleGlitch(); return; }
+  heroName.classList.add('is-glitching');
+  glitchLn.classList.add('active');
+  setTimeout(() => {
+    heroName.classList.remove('is-glitching');
+    glitchLn.classList.remove('active');
+    scheduleGlitch();
+  }, 620);
+}
+
+function scheduleGlitch() {
+  setTimeout(triggerGlitch, 5000 + Math.random() * 7000);
 }
 
 // ── Init ───────────────────────────────────────────
