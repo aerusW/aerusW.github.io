@@ -14,18 +14,9 @@
 <body>
 
   <!-- FS LOADER -->
-  <div id="fs-loader">
-    <div class="loader-panel loader-panel-top"></div>
-    <div class="loader-panel loader-panel-bottom"></div>
-    <div class="loader-core">
-      <div class="fs-monogram">
-        <span class="letter" id="letter-f">F</span>
-        <span class="letter" id="letter-s">S</span>
-      </div>
-      <div class="loader-progress-wrap">
-        <div class="loader-bar"></div>
-      </div>
-    </div>
+  <div id="fs-loader" role="status" aria-live="polite">
+    <span class="sr-only">Loading</span>
+    <h1 class="loader-name" aria-hidden="true"><span class="lc-f">F</span><span class="lc-s">S</span></h1>
   </div>
 
   <!-- PAGE TRANSITION -->

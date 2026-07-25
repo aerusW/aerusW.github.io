@@ -23,10 +23,7 @@ const navLinks   = [...document.querySelectorAll('.nav-link')];
 const counter    = document.getElementById('counter-current');
 
 const loader     = document.getElementById('fs-loader');
-const loaderBar  = loader.querySelector('.loader-bar');
-const loaderProg = loader.querySelector('.loader-progress-wrap');
-const letterF    = document.getElementById('letter-f');
-const letterS    = document.getElementById('letter-s');
+const loaderName = loader.querySelector('.loader-name');
 
 const ptEl      = document.getElementById('page-transition');
 const ptCurtain = ptEl.querySelector('.pt-curtain');
@@ -65,22 +62,83 @@ document.addEventListener('mouseout', e => {
 });
 
 // ── FS Loader ──────────────────────────────────────
-function runLoader() {
-  const tl = gsap.timeline({ onComplete: onLoaderDone });
+// A genuine preloader: it waits on real asset resolution (fonts, gallery
+// image decode, a GitHub prefetch) capped by a 4000ms ceiling, with an
+// 1100ms floor so it never flashes.
+//
+// Deliberately has zero GSAP involvement — every visual here is a plain
+// CSS keyframe/transition. GSAP chains kept breaking cross-browser and
+// leaving fragments stuck on screen; a CSS animation can't hang like that,
+// and "did it finish" just becomes a real DOM event (animationend/
+// transitionend) with a setTimeout as backup, not a timeline that has to
+// complete every step in order. The mark: F and S snap in hard from
+// opposite sides and glitch-flash on landing.
+const LOADER_FLOOR = 1100;
+const LOADER_CEILING = 4000;
 
-  tl.to(loaderProg, { opacity: 1, duration: 0.3, delay: 0.2 });
-  tl.to(loaderBar,  { width: '100%', duration: 1.1, ease: 'power2.inOut' }, '-=0.1');
-  tl.to([letterF, letterS], { y: '0%', duration: 0.85, ease: 'expo.out', stagger: 0.07 }, '-=0.55');
-  tl.to({}, { duration: 0.55 });
-  tl.to([letterF, letterS], { y: '-120%', duration: 0.6, ease: 'expo.in', stagger: 0.04 });
-  tl.to(loaderProg, { opacity: 0, duration: 0.2 }, '-=0.4');
-  tl.to('.loader-panel-top',    { yPercent: -100, duration: 0.75, ease: 'expo.inOut' }, '-=0.15');
-  tl.to('.loader-panel-bottom', { yPercent:  100, duration: 0.75, ease: 'expo.inOut' }, '<');
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function buildLoaderAssets(ghPromise) {
+  const assets = [document.fonts.ready];
+  document.querySelectorAll('.gal-item img').forEach(img => {
+    assets.push(img.decode ? img.decode().catch(() => {}) : Promise.resolve());
+  });
+  assets.push(ghPromise);
+  return assets;
+}
+
+// Plays the F/S snap-in once. Resolves as soon as it's visually settled
+// (CSS animation duration ~550ms + a brief glitch flash), never later than
+// the hard cap below regardless of what the browser does with the CSS.
+// Deliberately always plays, even under prefers-reduced-motion — this one
+// mark is the site's identity moment, not decorative chrome, and Francesco
+// wants it to run every time regardless of that setting.
+function playLogoReveal() {
+  return new Promise(resolve => {
+    loaderName.classList.add('play');
+    setTimeout(() => {
+      loaderName.classList.add('flash');
+      setTimeout(() => { loaderName.classList.remove('flash'); resolve(); }, 110);
+    }, 620);
+  });
+}
+
+// Single opacity fade on the whole (flat, one-layer) loader, via CSS
+// transition rather than a JS-driven tween.
+function fadeOutLoader() {
+  return new Promise(resolve => {
+    loader.addEventListener('transitionend', resolve, { once: true });
+    loader.classList.add('exit');
+    setTimeout(resolve, 1100); // hard cap
+  });
+}
+
+async function runLoader(ghPromise) {
+  const start = performance.now();
+  try {
+    await Promise.all([
+      playLogoReveal(),
+      Promise.race([
+        Promise.allSettled(buildLoaderAssets(ghPromise)),
+        wait(LOADER_CEILING),
+      ]),
+    ]);
+    const remain = Math.max(0, LOADER_FLOOR - (performance.now() - start));
+    if (remain) await wait(remain);
+  } catch (e) {
+    // Whatever broke, the loader still fades out below.
+  } finally {
+    await fadeOutLoader();
+    onLoaderDone();
+  }
 }
 
 function onLoaderDone() {
-  loader.style.display = 'none';
+  if (loaded) return;
   loaded = true;
+  loader.style.display = 'none';
   // Only start watching sections once the loader is out of the way, so the
   // entrance animation for whichever section is in view plays as a reveal
   // rather than finishing silently behind the opaque loader.
@@ -100,7 +158,6 @@ function onSectionIntersect(entries) {
     updateNav(idx);
     history.replaceState(null, '', '#' + entry.target.id);
 
-    if (idx === 2 && !ghFetched) fetchGithub();
     if (idx === 4) onGalleryActivate();
 
     if (!entry.target.dataset.animated) {
@@ -219,9 +276,10 @@ const LANG_COLORS = {
 };
 
 function fetchGithub() {
+  if (ghFetched) return Promise.resolve();
   ghFetched = true;
 
-  fetch('https://api.github.com/users/aerusW/repos?sort=updated&per_page=10&type=public')
+  return fetch('https://api.github.com/users/aerusW/repos?sort=updated&per_page=10&type=public')
     .then(r => {
       if (!r.ok) throw new Error(r.status);
       return r.json();
@@ -438,6 +496,15 @@ function scheduleGlitch() {
 // ── Init ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initialHashJump();
-  if (window.gsap) runLoader(); else onLoaderDone();
   initGallery();
+  // Fetch once regardless of loader path so the Projects section never
+  // has to wait for it later.
+  const ghPromise = fetchGithub();
+  // The loader itself has no GSAP dependency, so it runs the same way
+  // whether or not the CDN loaded — only the rest of the site's entrance
+  // animations are gated on window.gsap (see animateIn/.no-gsap).
+  runLoader(ghPromise);
+  // Safety net: if the loader's async sequence somehow never settles,
+  // force it out of the way instead of leaving the site stuck behind it.
+  setTimeout(() => { if (!loaded) onLoaderDone(); }, LOADER_CEILING + 5000);
 });
