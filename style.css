@@ -49,9 +49,20 @@ button { background: none; border: none; cursor: none; }
   opacity: 1 !important;
   visibility: visible !important;
 }
-.no-gsap .fs-monogram .letter { transform: none !important; }
-.no-gsap #fs-loader,
+/* The loader is pure CSS/JS now (no GSAP dependency), so it still runs
+   normally here. Only the curtain (GSAP-driven) needs hiding. */
 .no-gsap #page-transition { display: none !important; }
+
+/* ---- Visually hidden but screen-reader accessible ---- */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* ---- Film grain ---- */
 body::before {
@@ -67,61 +78,63 @@ body::before {
 
 /* ================================================
    LOADER
-   ================================================ */
+   ================================================
+   One flat, fully-opaque layer. Exit is a single opacity fade (CSS
+   transition, not GSAP) on this element — no sliding panels, no seams,
+   nothing that can desync and leave a fragment on screen. The mark itself
+   is pure CSS keyframes so it can't hang on a failed tween either: F and S
+   snap in hard from opposite sides and glitch-flash on landing, then the
+   loader waits for real asset resolution (capped by the ceiling) before
+   fading out. */
 #fs-loader {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  pointer-events: all;
-}
-.loader-panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 50%;
   background: var(--bg);
-  z-index: 1;
-  transform-origin: top;
-}
-.loader-panel-top  { top: 0;   transform-origin: top; }
-.loader-panel-bottom { bottom: 0; transform-origin: bottom; }
-
-.loader-core {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
+  pointer-events: all;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.5rem;
+  opacity: 1;
+  transition: opacity 0.85s ease;
 }
-.fs-monogram {
+#fs-loader.exit { opacity: 0; }
+
+.loader-name {
   display: flex;
-  gap: 0.04em;
-  overflow: hidden;
-}
-.fs-monogram .letter {
-  font-size: clamp(5rem, 13vw, 12rem);
+  font-family: var(--mono);
   font-weight: 700;
+  font-size: clamp(4rem, 12vw, 9rem);
+  letter-spacing: -0.01em;
   line-height: 1;
-  letter-spacing: -0.02em;
-  display: block;
-  transform: translateY(115%);
-  will-change: transform;
 }
-.loader-progress-wrap {
-  width: 100px;
-  height: 1px;
-  background: rgba(240, 237, 232, 0.1);
-  overflow: hidden;
+.loader-name .lc-f,
+.loader-name .lc-s {
+  display: inline-block;
   opacity: 0;
 }
-.loader-bar {
-  height: 100%;
-  width: 0;
-  background: var(--text);
-  will-change: width;
+
+@keyframes fsSnapLeft {
+  0%   { transform: translateX(-46vw) skewX(-10deg); opacity: 0; }
+  55%  { transform: translateX(8px) skewX(3deg);      opacity: 1; }
+  72%  { transform: translateX(-4px) skewX(-1.5deg); }
+  88%  { transform: translateX(2px) skewX(0.5deg); }
+  100% { transform: translateX(0) skewX(0deg);        opacity: 1; }
+}
+@keyframes fsSnapRight {
+  0%   { transform: translateX(46vw) skewX(10deg);  opacity: 0; }
+  55%  { transform: translateX(-8px) skewX(-3deg);   opacity: 1; }
+  72%  { transform: translateX(4px) skewX(1.5deg); }
+  88%  { transform: translateX(-2px) skewX(-0.5deg); }
+  100% { transform: translateX(0) skewX(0deg);        opacity: 1; }
+}
+.loader-name.play .lc-f { animation: fsSnapLeft 0.55s cubic-bezier(.2,.85,.2,1) forwards; }
+.loader-name.play .lc-s { animation: fsSnapRight 0.55s cubic-bezier(.2,.85,.2,1) forwards 0.05s; }
+
+/* Brief glitch flash on landing — same red/cyan split as the hero mark */
+.loader-name.flash .lc-f,
+.loader-name.flash .lc-s {
+  text-shadow: -3px 0 var(--accent), 3px 0 rgba(0, 210, 255, 0.85);
 }
 
 /* ================================================
@@ -957,5 +970,15 @@ body.is-hovering .cursor-dot { background: var(--accent); }
     transform: none !important;
     opacity: 1 !important;
   }
-  #page-transition, #fs-loader { transition: none !important; }
+  #page-transition { transition: none !important; }
+
+  /* Deliberate exception: the loader's F/S mark is the site's identity
+     moment, not decorative chrome, and always plays at full speed
+     regardless of this setting (higher-specificity selector wins over
+     the blanket *,*::before,*::after rule above). */
+  .loader-name.play .lc-f,
+  .loader-name.play .lc-s {
+    animation-duration: 0.55s !important;
+    animation-iteration-count: 1 !important;
+  }
 }
