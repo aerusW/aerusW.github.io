@@ -36,28 +36,72 @@ const cRing     = cursorEl.querySelector('.cursor-ring');
 const glitchLn  = document.getElementById('glitch-line');
 
 // ── Cursor ─────────────────────────────────────────
+// Both dot and ring are written from a single rAF loop via transform:
+// translate3d() (compositor-only, no layout) instead of left/top on every
+// mousemove, which forced layout twice per frame. Mouse position is
+// cached on mousemove; the frame just reads the cache and writes once.
 let mx = 0, my = 0, rx = 0, ry = 0;
+let magnetTarget = null; // {cx, cy} of the nearest snap target, or null
+
+const MAGNET_SEL   = 'a, button, .dot';
+const MAGNET_RADIUS = 60;
+let magnetEls = [];
+
+function refreshMagnetEls() {
+  magnetEls = [...document.querySelectorAll(MAGNET_SEL)];
+}
+refreshMagnetEls();
+
+function findMagnetTarget(x, y) {
+  let best = null, bestDist = MAGNET_RADIUS;
+  for (const el of magnetEls) {
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) continue;
+    const dx = Math.max(r.left - x, 0, x - r.right);
+    const dy = Math.max(r.top - y, 0, y - r.bottom);
+    const dist = Math.hypot(dx, dy);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    }
+  }
+  return best;
+}
 
 document.addEventListener('mousemove', e => {
   mx = e.clientX; my = e.clientY;
-  cDot.style.left = mx + 'px';
-  cDot.style.top  = my + 'px';
+  magnetTarget = findMagnetTarget(mx, my);
 });
 
-(function trackRing() {
-  rx += (mx - rx) * 0.11;
-  ry += (my - ry) * 0.11;
-  cRing.style.left = rx + 'px';
-  cRing.style.top  = ry + 'px';
-  requestAnimationFrame(trackRing);
+(function trackCursor() {
+  cDot.style.transform = `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%)`;
+
+  // The ring snaps toward a nearby interactive element's centre instead of
+  // the raw mouse position; the dot always stays exact on the cursor.
+  const tx = magnetTarget ? magnetTarget.cx : mx;
+  const ty = magnetTarget ? magnetTarget.cy : my;
+  const strength = magnetTarget ? 0.25 : 0.11;
+  rx += (tx - rx) * strength;
+  ry += (ty - ry) * strength;
+  cRing.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`;
+
+  requestAnimationFrame(trackCursor);
 })();
 
+// pointerover/out (not mouseover/mouseout) so this also works on browsers
+// that only fire pointer events, and e.relatedTarget is checked against
+// the same hoverable host so moving between a row and its own children
+// doesn't spuriously toggle the hover state on and off.
 const HOVER_SEL = 'a, button, .dot, .project-row';
-document.addEventListener('mouseover', e => {
-  if (e.target.closest(HOVER_SEL)) document.body.classList.add('is-hovering');
+document.addEventListener('pointerover', e => {
+  const host = e.target.closest(HOVER_SEL);
+  if (!host || host.contains(e.relatedTarget)) return;
+  document.body.classList.add('is-hovering');
 });
-document.addEventListener('mouseout', e => {
-  if (e.target.closest(HOVER_SEL)) document.body.classList.remove('is-hovering');
+document.addEventListener('pointerout', e => {
+  const host = e.target.closest(HOVER_SEL);
+  if (!host || host.contains(e.relatedTarget)) return;
+  document.body.classList.remove('is-hovering');
 });
 
 // ── FS Loader ──────────────────────────────────────
@@ -347,6 +391,8 @@ function renderRepos(repos) {
     gsap.set(rows, { opacity: 0, x: -14 });
     gsap.to(rows, { opacity: 1, x: 0, duration: 0.5, ease: 'expo.out', stagger: 0.06, delay: 0.1 });
   }
+
+  refreshMagnetEls(); // rows are <a> tags, so they're cursor magnet targets too
 }
 
 function showGhError() {

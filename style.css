@@ -183,6 +183,7 @@ body::before {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   transition: background 0.2s;
+  will-change: transform;
 }
 .cursor-ring {
   position: absolute;
@@ -194,12 +195,20 @@ body::before {
     width  0.35s var(--ease),
     height 0.35s var(--ease),
     border-color 0.25s;
+  will-change: transform;
 }
 body.is-hovering .cursor-ring {
   width: 54px; height: 54px;
   border-color: rgba(200, 16, 46, 0.7);
 }
 body.is-hovering .cursor-dot { background: var(--accent); }
+
+/* No hardware pointer (touch) — restore native cursor/tap behaviour
+   instead of an invisible custom cursor nobody can see move. */
+@media (hover: none), (pointer: coarse) {
+  body, button { cursor: auto; }
+  #cursor { display: none; }
+}
 
 /* ================================================
    TOP NAV
