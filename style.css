@@ -673,7 +673,8 @@ em[data-text].is-glitching::after {
    ================================================ */
 .stat-row {
   display: flex;
-  gap: 3rem;
+  flex-wrap: wrap;
+  gap: 1.5rem 3rem;
 }
 .stat { overflow: hidden; }
 .stat em { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -703,6 +704,15 @@ em[data-text].is-glitching::after {
   grid-template-columns: 180px 1fr;
   gap: 3rem;
   align-items: end;
+}
+.work-intro {
+  grid-column: 2;
+  margin-top: 0.75rem;
+}
+.work-intro em {
+  font-size: clamp(0.9rem, 1.2vw, 1rem);
+  color: var(--muted);
+  font-weight: 300;
 }
 .project-list {
   border-top: 1px solid var(--faint);
@@ -802,7 +812,7 @@ em[data-text].is-glitching::after {
    ================================================ */
 .elsewhere-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 3rem;
   margin-top: 0.5rem;
 }
