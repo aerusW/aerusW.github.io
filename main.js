@@ -359,32 +359,7 @@ function escHtml(str) {
 
 // ── Navigation ─────────────────────────────────────
 // Scrolling itself is native (scroll-snap-type on <html>) — nothing here
-// intercepts a normal wheel/touch/keyboard scroll. The only custom logic
-// is at the two ends of the page, where native scroll has nowhere further
-// to go: a continued attempt there loops to the opposite end (#3.1, #4).
-let boundaryLock = false;
-function tryLoop(idx) {
-  if (boundaryLock || !loaded) return;
-  boundaryLock = true;
-  jumpTo(idx, { push: true });
-  setTimeout(() => { boundaryLock = false; }, 900);
-}
-
-window.addEventListener('wheel', e => {
-  if (!loaded) return;
-  if (current === TOTAL - 1 && e.deltaY > 0) tryLoop(0);
-  else if (current === 0 && e.deltaY < 0) tryLoop(TOTAL - 1);
-}, { passive: true });
-
-let touchY0 = 0;
-window.addEventListener('touchstart', e => { touchY0 = e.touches[0].clientY; }, { passive: true });
-window.addEventListener('touchend', e => {
-  if (!loaded) return;
-  const dy = touchY0 - e.changedTouches[0].clientY;
-  if (Math.abs(dy) < 50) return;
-  if (current === TOTAL - 1 && dy > 0) tryLoop(0);
-  else if (current === 0 && dy < 0) tryLoop(TOTAL - 1);
-}, { passive: true });
+// intercepts a normal wheel/touch scroll.
 
 // Arrow keys are kept only as an explicit jump convenience; Space, PageUp/
 // PageDown and Home/End are left untouched so the scroll container handles
@@ -393,10 +368,10 @@ window.addEventListener('keydown', e => {
   if (!loaded) return;
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    if (current === TOTAL - 1) tryLoop(0); else jumpTo(current + 1, { push: true });
+    jumpTo(current + 1, { push: true });
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    if (current === 0) tryLoop(TOTAL - 1); else jumpTo(current - 1, { push: true });
+    jumpTo(current - 1, { push: true });
   }
 });
 
