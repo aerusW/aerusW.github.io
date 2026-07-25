@@ -684,7 +684,45 @@ function updateScrollProgress() {
   const max = document.documentElement.scrollHeight - window.innerHeight;
   scrollProgressEl.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + '%';
 }
-window.addEventListener('scroll', updateScrollProgress, { passive: true });
+
+// ── Mobile auto-hiding header ──────────────────────
+// The FS logo + hamburger hide on scroll-down and reappear on scroll-up,
+// so the header doesn't permanently eat into a phone's limited vertical
+// space. Only active below 900px (where the hamburger itself shows) and
+// never while the mobile menu is open.
+const NAV_HIDE_MIN_Y = 80; // don't hide near the very top of the page
+let lastScrollY = window.scrollY;
+function updateNavVisibility() {
+  if (window.innerWidth > 900) {
+    document.body.classList.remove('nav-hidden');
+    lastScrollY = window.scrollY;
+    return;
+  }
+  if (menuOpen) return;
+  const y = window.scrollY;
+  if (y > lastScrollY && y > NAV_HIDE_MIN_Y) {
+    document.body.classList.add('nav-hidden');
+  } else if (y < lastScrollY) {
+    document.body.classList.remove('nav-hidden');
+  }
+  lastScrollY = y;
+}
+
+// Both handlers above are read+write DOM work triggered by 'scroll', which
+// on mobile can fire far more often than once per frame — doing that work
+// unthrottled is exactly the kind of thing that makes touch-scrolling feel
+// laggy. Coalesce to at most once per animation frame.
+let scrollTicking = false;
+function onScroll() {
+  if (scrollTicking) return;
+  scrollTicking = true;
+  requestAnimationFrame(() => {
+    updateScrollProgress();
+    updateNavVisibility();
+    scrollTicking = false;
+  });
+}
+window.addEventListener('scroll', onScroll, { passive: true });
 window.addEventListener('resize', updateScrollProgress, { passive: true });
 
 // ── Mobile menu ─────────────────────────────────────
