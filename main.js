@@ -434,9 +434,16 @@ document.querySelectorAll('[data-to]').forEach(el => {
 });
 
 // ── Justified gallery layout ───────────────────────
+// Below 900px the gallery is a plain CSS grid (see style.css) — this
+// fixed two-row justified math assumes a desktop-width single row pair
+// and is skipped entirely there rather than fighting the grid.
 let galGrid, galItems, galImgs;
 let galImgsReady    = false;
 let galSectionShown = false;
+
+function isNarrowViewport() {
+  return window.innerWidth <= 900;
+}
 
 function initGallery() {
   galGrid  = document.querySelector('.gallery-grid');
@@ -460,6 +467,7 @@ function initGallery() {
 }
 
 function applyJustified() {
+  if (isNarrowViewport()) return;
   const GAP = 4;
   const W   = galGrid.clientWidth;
   const H   = galGrid.clientHeight;
@@ -515,10 +523,18 @@ function glitchActive() {
   return loaded && heroVisible && document.visibilityState === 'visible' && !prefersReducedMotion();
 }
 
+// Below 768px the glitch runs at half frequency and skips the scan line
+// entirely — a smaller motion budget for the device most likely to be on
+// a battery and a slower GPU.
+function isMobileMotionBudget() {
+  return window.innerWidth <= 768;
+}
+
 function syncGlitchScheduling() {
   if (glitchActive()) {
     if (!glitchTimer) {
-      const delay = glitchStarted ? glitchRand(6000, 13000) : glitchRand(2500, 3000);
+      let delay = glitchStarted ? glitchRand(6000, 13000) : glitchRand(2500, 3000);
+      if (isMobileMotionBudget()) delay *= 2;
       glitchStarted = true;
       glitchTimer = setTimeout(fireGlitch, delay);
     }
@@ -531,7 +547,7 @@ function syncGlitchScheduling() {
 function fireGlitch() {
   glitchTimer = null;
   runGlitchBurst();
-  runScanLine();
+  if (!isMobileMotionBudget()) runScanLine();
   syncGlitchScheduling();
 }
 
@@ -608,10 +624,88 @@ if (navLogo) {
   });
 }
 
+// ── Mobile scroll progress ─────────────────────────
+// Replaces #side-dots below 900px: a 2px accent rule pinned to the top
+// edge, width tracking how far down the document the visitor has scrolled.
+const scrollProgressEl = document.getElementById('scroll-progress');
+function updateScrollProgress() {
+  if (!scrollProgressEl) return;
+  const max = document.documentElement.scrollHeight - window.innerHeight;
+  scrollProgressEl.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + '%';
+}
+window.addEventListener('scroll', updateScrollProgress, { passive: true });
+window.addEventListener('resize', updateScrollProgress, { passive: true });
+
+// ── Mobile menu ─────────────────────────────────────
+// Panels wipe in and links stagger up via plain CSS transitions (see
+// style.css) rather than a GSAP timeline — after the loader's GSAP chains
+// repeatedly got stuck mid-sequence, anything that can leave the site in
+// a broken state (a menu stuck half-open, blocking the page) goes to CSS
+// class toggles instead, which can't get stuck partway.
+const menuToggle = document.getElementById('menu-toggle');
+const mobileMenu = document.getElementById('mobile-menu');
+const fpMain     = document.getElementById('fp');
+const mmLinks    = [...document.querySelectorAll('.mm-link')];
+let menuOpen = false;
+
+function openMobileMenu() {
+  if (menuOpen) return;
+  menuOpen = true;
+  menuToggle.setAttribute('aria-expanded', 'true');
+  mobileMenu.setAttribute('aria-hidden', 'false');
+  mobileMenu.classList.add('open');
+  fpMain.setAttribute('inert', '');
+  document.body.style.overflow = 'hidden';
+  mmLinks[0]?.focus();
+}
+
+function closeMobileMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  menuToggle.setAttribute('aria-expanded', 'false');
+  mobileMenu.setAttribute('aria-hidden', 'true');
+  mobileMenu.classList.remove('open');
+  fpMain.removeAttribute('inert');
+  document.body.style.overflow = '';
+  menuToggle.focus();
+}
+
+if (menuToggle && mobileMenu) {
+  menuToggle.addEventListener('click', () => {
+    if (menuOpen) closeMobileMenu(); else openMobileMenu();
+  });
+
+  // Close on link select (navigation itself is already handled by the
+  // site-wide [data-to] click handler further down).
+  mmLinks.forEach(link => link.addEventListener('click', closeMobileMenu));
+
+  // Close on backdrop tap — the two panels tile the full screen when
+  // open, so "backdrop" here just means anywhere that isn't a link.
+  mobileMenu.addEventListener('click', e => {
+    if (!e.target.closest('.mm-link')) closeMobileMenu();
+  });
+
+  window.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && menuOpen) closeMobileMenu();
+  });
+
+  // Focus trap: only the links themselves are focusable inside the menu.
+  mobileMenu.addEventListener('keydown', e => {
+    if (e.key !== 'Tab' || !mmLinks.length) return;
+    const first = mmLinks[0], last = mmLinks[mmLinks.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+    }
+  });
+}
+
 // ── Init ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initialHashJump();
   initGallery();
+  updateScrollProgress();
   // Fetch once regardless of loader path so the Projects section never
   // has to wait for it later.
   const ghPromise = fetchGithub();

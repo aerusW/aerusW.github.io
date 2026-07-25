@@ -316,6 +316,110 @@ body.is-hovering .cursor-dot { background: var(--accent); }
 }
 
 /* ================================================
+   MOBILE SCROLL PROGRESS
+   ================================================
+   Replaces #side-dots on narrow viewports — a 2px accent rule pinned to
+   the top edge, width tracking scroll progress. */
+#scroll-progress {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  z-index: 1001;
+  height: 2px;
+  width: 0%;
+  background: var(--accent);
+}
+
+/* ================================================
+   MOBILE MENU
+   ================================================ */
+#menu-toggle {
+  display: none;
+  position: fixed;
+  top: 0.5rem; right: 0.5rem;
+  z-index: 1100;
+  width: 44px; height: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+#menu-toggle span {
+  display: block;
+  width: 20px; height: 1px;
+  background: var(--text);
+  transition: transform 0.3s var(--ease), opacity 0.3s var(--ease);
+}
+#menu-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+#menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+#menu-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Pure CSS transitions rather than a GSAP timeline — the loader's GSAP
+   chains repeatedly broke cross-browser and left fragments on screen
+   (see main.js history); a class toggle can't get stuck half-open. */
+#mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  visibility: hidden;
+  transition: visibility 0s linear 0.5s;
+}
+#mobile-menu.open { visibility: visible; transition-delay: 0s; }
+
+.mm-panel {
+  position: absolute;
+  left: 0; right: 0;
+  height: 50%;
+  background: var(--bg);
+  transition: transform 0.5s var(--ease);
+}
+.mm-panel-top { top: 0; transform: translateY(-100%); }
+.mm-panel-bottom { bottom: 0; transform: translateY(100%); }
+#mobile-menu.open .mm-panel-top,
+#mobile-menu.open .mm-panel-bottom { transform: translateY(0); }
+
+.mm-nav {
+  position: relative;
+  z-index: 1;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 0 2rem;
+}
+.mm-link {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  font-size: clamp(1.8rem, 8vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.mm-num {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+.mm-link .clip { overflow: hidden; }
+.mm-link .up {
+  display: block;
+  transform: translateY(115%);
+  transition: transform 0.6s var(--ease);
+}
+/* Staggered reveal — same expo-out feel as the section entrance vocabulary */
+#mobile-menu.open .mm-link:nth-child(1) .up { transition-delay: 0.15s; }
+#mobile-menu.open .mm-link:nth-child(2) .up { transition-delay: 0.21s; }
+#mobile-menu.open .mm-link:nth-child(3) .up { transition-delay: 0.27s; }
+#mobile-menu.open .mm-link:nth-child(4) .up { transition-delay: 0.33s; }
+#mobile-menu.open .mm-link:nth-child(5) .up { transition-delay: 0.39s; }
+#mobile-menu.open .mm-link:nth-child(6) .up { transition-delay: 0.45s; }
+#mobile-menu.open .mm-link .up { transform: translateY(0); }
+
+/* ================================================
    FULLPAGE
    ================================================ */
 #fp {
@@ -916,7 +1020,10 @@ em[data-text].is-glitching::after {
 }
 .gal-item:hover::before { background: rgba(8, 8, 8, 0); }
 
-/* caption slides up on hover */
+/* Caption slides up on hover — desktop only. Below 900px there's no
+   hover, so it's replaced by a static caption under the image instead
+   (see RESPONSIVE): the hover-only version would otherwise be invisible
+   content on a phone. */
 .gal-item figcaption {
   position: absolute;
   bottom: 0; left: 0; right: 0;
@@ -951,28 +1058,68 @@ em[data-text].is-glitching::after {
   .hero-name { font-size: clamp(3rem, 10vw, 6rem); }
   .contact-heading { font-size: clamp(2.5rem, 9vw, 5rem); }
   .hero-bg-number { display: none; }
-  #side-dots { display: none; }
   #section-counter { left: 2rem; }
   .gallery-head { grid-template-columns: 1fr; gap: 0.5rem; }
-  .gallery-grid { grid-template-rows: repeat(2, 1fr); }
+
+  /* Real nav replacement, not just a hidden list: side dots -> top
+     progress rule, horizontal links -> hamburger + full-screen menu. */
+  #side-dots { display: none; }
+  #scroll-progress { display: block; }
+  .nav-links { display: none; }
+  #menu-toggle { display: flex; }
+
+  /* Gallery: two columns, fixed aspect ratio, no more JS justified-row
+     math (that's skipped below 900px in JS — see applyJustified). Image
+     and caption both go back to normal flow (stacked, not overlaid), and
+     the section grows to fit rather than clipping at one screen — there's
+     no hover on a phone, so a hover-only caption is invisible content. */
+  #gallery, .s-inner--gallery { height: auto; }
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem 1rem;
+    overflow: visible;
+  }
+  .gal-item {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .gal-item img {
+    position: static;
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    height: auto;
+  }
+  .gal-item::before { display: none; }
+  .gal-item figcaption {
+    position: static;
+    transform: none;
+    background: none;
+    padding: 0.5rem 0 0;
+    color: var(--muted);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Full-screen snap is the single most common way a portfolio becomes
+     unusable on a phone — content that overflows a snap section becomes
+     unreachable. Drop it for normal document flow with generous padding. */
+  html { scroll-snap-type: none; }
+  .s { scroll-snap-align: none; height: auto; padding: 4rem 0; }
 }
 
 @media (max-width: 600px) {
-  .nav-links { display: none; }
   .s-inner { padding: 0 1.5rem; padding-top: 5rem; }
   .hero-actions em { flex-direction: column; align-items: flex-start; gap: 1.25rem; }
-  /* on small screens: 2-col grid, 3 rows */
-  .gallery-grid {
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-  }
-  .gal-item:nth-child(1) { grid-column: span 2; }
-  .gal-item:nth-child(4) { grid-column: span 1; }
+  .gallery-grid { grid-template-columns: 1fr; }
 }
 
 /* Mandatory snapping can trap content taller than the viewport on short
-   laptop screens (About / Elsewhere). Fall back to proximity there. */
-@media (max-height: 700px) {
+   laptop screens (About / Elsewhere). Fall back to proximity there.
+   (Below 768px snapping is off entirely — see above.) */
+@media (max-height: 700px) and (min-width: 769px) {
   html { scroll-snap-type: y proximity; }
 }
 
@@ -985,6 +1132,7 @@ em[data-text].is-glitching::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    transition-delay: 0s !important;
   }
   .up, .eyebrow, .el-block, .project-row {
     transform: none !important;
