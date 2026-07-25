@@ -1,0 +1,30 @@
+[
+  {
+    "repo": "waypointbxl",
+    "title": "Waypoint",
+    "blurb": "A non-profit helping first-time Erasmus+ participants navigate Brussels.",
+    "tags": ["Community", "Non-profit"],
+    "url": "https://github.com/aerusW/waypointbxl"
+  },
+  {
+    "repo": "searchlens",
+    "title": "SearchLens",
+    "blurb": "A Firefox extension that strips sponsored results and lets you filter search by type, domain, and language.",
+    "tags": ["Browser extension", "Firefox"],
+    "url": "https://github.com/aerusW/searchlens"
+  },
+  {
+    "repo": "No-Tube-Rot",
+    "title": "No Tube Rot",
+    "blurb": "Removes YouTube Shorts and the algorithmic home feed — just your subscriptions, no AI slop.",
+    "tags": ["Browser extension", "YouTube"],
+    "url": "https://github.com/aerusW/No-Tube-Rot"
+  },
+  {
+    "repo": "YTDownloaderStuff",
+    "title": "YT Downloader",
+    "blurb": "A Windows-friendly CLI wrapper for downloading YouTube video and audio.",
+    "tags": ["CLI", "Python"],
+    "url": "https://github.com/aerusW/YTDownloaderStuff"
+  }
+]

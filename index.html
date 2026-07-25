@@ -178,16 +178,10 @@
             <span class="clip"><em class="up d1">source work.</em></span>
           </h2>
         </div>
-        <!-- populated by GitHub API -->
-        <div id="project-list" class="project-list">
-          <div id="gh-loading" class="gh-state">
-            <span class="gh-spinner"></span>
-            <span class="gh-msg">Fetching from GitHub…</span>
-          </div>
-        </div>
-        <div id="gh-error" class="gh-state gh-error" style="display:none">
-          <span class="gh-msg">Couldn't reach GitHub right now. <a href="https://github.com/aerusW" target="_blank" rel="noopener">See profile ↗</a></span>
-        </div>
+        <!-- Rendered from the projects.json allowlist; language/last-push
+             badges are enriched from the GitHub API afterward if it's
+             reachable. Nothing appears here unless it's in that file. -->
+        <div id="project-list" class="project-list"></div>
       </div>
       <div class="hero-bg-number" aria-hidden="true">03</div>
     </section>
@@ -291,7 +285,7 @@
             <em class="up d4">
               <a class="social-link" href="https://github.com/aerusW" target="_blank" rel="noopener">GitHub</a>
               <span class="social-divider">—</span>
-              <a class="social-link" href="#" target="_blank" rel="noopener">LinkedIn</a>
+              <a class="social-link" href="https://www.instagram.com/francesco.serangeli/" target="_blank" rel="noopener">Instagram</a>
             </em>
           </div>
           <footer class="site-footer">

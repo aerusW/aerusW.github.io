@@ -123,12 +123,12 @@ function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function buildLoaderAssets(ghPromise) {
+function buildLoaderAssets(projectsPromise) {
   const assets = [document.fonts.ready];
   document.querySelectorAll('.gal-item img').forEach(img => {
     assets.push(img.decode ? img.decode().catch(() => {}) : Promise.resolve());
   });
-  assets.push(ghPromise);
+  assets.push(projectsPromise);
   return assets;
 }
 
@@ -158,13 +158,13 @@ function fadeOutLoader() {
   });
 }
 
-async function runLoader(ghPromise) {
+async function runLoader(projectsPromise) {
   const start = performance.now();
   try {
     await Promise.all([
       playLogoReveal(),
       Promise.race([
-        Promise.allSettled(buildLoaderAssets(ghPromise)),
+        Promise.allSettled(buildLoaderAssets(projectsPromise)),
         wait(LOADER_CEILING),
       ]),
     ]);
@@ -310,8 +310,17 @@ function updateNav(idx) {
   counter.textContent = String(idx + 1).padStart(2, '0');
 }
 
-// ── GitHub API ─────────────────────────────────────
-// Language → colour (subset of GitHub's palette)
+// ── Projects ───────────────────────────────────────
+// projects.json is an explicit allowlist: {repo, title, blurb, tags, url}.
+// Nothing appears here unless it's in that file — the old version pulled
+// whatever the unauthenticated GitHub API happened to return, which meant
+// any repo pushed to next would silently appear on the front page. The
+// manifest renders immediately (it's a local file, not a network
+// dependency); GitHub is only used afterward to enrich each row with a
+// language dot and a last-push date, cached in sessionStorage for 60
+// minutes. If GitHub is unreachable or rate-limited, the manifest still
+// renders exactly as written — no error state, because a 403 from GitHub
+// isn't something this portfolio owes an apology for.
 const LANG_COLORS = {
   JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5',
   HTML:       '#e34c26', CSS:        '#563d7c', Vue:    '#41b883',
@@ -319,89 +328,131 @@ const LANG_COLORS = {
   Java:       '#b07219', Ruby:       '#701516', 'C++':  '#f34b7d',
   C:          '#555555', Kotlin:     '#a97bff', Swift:  '#ffac45',
 };
+const PROJECTS_CACHE_KEY = 'fs-projects-cache';
+const PROJECTS_CACHE_TTL = 60 * 60 * 1000; // 60 minutes
 
-function fetchGithub() {
+function loadProjects() {
   if (ghFetched) return Promise.resolve();
   ghFetched = true;
 
-  return fetch('https://api.github.com/users/aerusW/repos?sort=updated&per_page=10&type=public')
-    .then(r => {
-      if (!r.ok) throw new Error(r.status);
-      return r.json();
+  return fetch('projects.json')
+    .then(r => r.json())
+    .then(list => {
+      renderProjects(list);
+      return enrichProjects(list);
     })
-    .then(repos => renderRepos(repos))
-    .catch(() => showGhError());
+    .catch(() => {}); // the manifest itself is the only thing that actually matters here
 }
 
-function renderRepos(repos) {
-  const list    = document.getElementById('project-list');
-  const loading = document.getElementById('gh-loading');
+function renderProjects(list) {
+  const container = document.getElementById('project-list');
 
-  // Filter out forks with no description, sort by stars then update date
-  const filtered = repos
-    .filter(r => !r.fork || r.description)
-    .sort((a, b) => (b.stargazers_count - a.stargazers_count) || 0)
-    .slice(0, 6);
-
-  if (!filtered.length) {
-    showGhError();
-    return;
-  }
-
-  // Remove loading indicator
-  loading.remove();
-
-  filtered.forEach((repo, i) => {
-    const color = repo.language ? (LANG_COLORS[repo.language] || '#888') : '#888';
-    const desc  = repo.description || 'No description';
-    const row   = document.createElement('a');
-
-    row.className  = 'project-row';
-    row.href       = repo.html_url;
+  list.forEach((proj, i) => {
+    const row = document.createElement('a');
+    row.className = 'project-row';
+    row.href       = proj.url;
     row.target     = '_blank';
     row.rel        = 'noopener';
     row.tabIndex   = 0;
-    row.innerHTML  = `
-      <span class="pr-num">${String(i + 1).padStart(2, '0')}</span>
-      <span class="pr-info">
-        <span class="pr-name">${escHtml(repo.name)}</span>
-        <span class="pr-desc">${escHtml(desc)}</span>
-      </span>
-      ${repo.language ? `<span class="pr-lang" style="--lang-color:${color}">${escHtml(repo.language)}</span>` : '<span></span>'}
-      <span class="pr-arrow" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </span>
-    `;
+    row.dataset.repo = proj.repo;
 
-    list.appendChild(row);
+    const num = document.createElement('span');
+    num.className = 'pr-num';
+    num.textContent = String(i + 1).padStart(2, '0');
 
-    // Re-bind tilt on new rows
+    const info = document.createElement('span');
+    info.className = 'pr-info';
+    const name = document.createElement('span');
+    name.className = 'pr-name';
+    name.textContent = proj.title;
+    const desc = document.createElement('span');
+    desc.className = 'pr-desc';
+    desc.textContent = proj.blurb;
+    info.append(name, desc);
+
+    const tags = document.createElement('span');
+    tags.className = 'pr-tags';
+    (proj.tags || []).forEach(t => {
+      const tagEl = document.createElement('span');
+      tagEl.textContent = t;
+      tags.appendChild(tagEl);
+    });
+
+    const langSlot = document.createElement('span');
+    langSlot.className = 'pr-lang-slot';
+
+    const arrow = document.createElement('span');
+    arrow.className = 'pr-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    row.append(num, info, tags, langSlot, arrow);
+    container.appendChild(row);
+
     row.addEventListener('mousemove', e => {
+      if (!window.gsap) return;
       const r = row.getBoundingClientRect();
       gsap.to(row, { rotateX: ((e.clientY - r.top) / r.height - 0.5) * 4, duration: 0.35, ease: 'power2.out', transformPerspective: 1000 });
     });
     row.addEventListener('mouseleave', () => {
+      if (!window.gsap) return;
       gsap.to(row, { rotateX: 0, duration: 0.5, ease: 'expo.out' });
     });
   });
 
-  // If projects section is currently active, animate the new rows in
-  if (current === 2) {
-    const rows = list.querySelectorAll('.project-row');
-    gsap.set(rows, { opacity: 0, x: -14 });
-    gsap.to(rows, { opacity: 1, x: 0, duration: 0.5, ease: 'expo.out', stagger: 0.06, delay: 0.1 });
-  }
-
   refreshMagnetEls(); // rows are <a> tags, so they're cursor magnet targets too
 }
 
-function showGhError() {
-  document.getElementById('gh-loading').style.display = 'none';
-  document.getElementById('gh-error').style.display   = 'flex';
+function readProjectsCache() {
+  try {
+    const raw = sessionStorage.getItem(PROJECTS_CACHE_KEY);
+    if (!raw) return {};
+    const { ts, data } = JSON.parse(raw);
+    return (Date.now() - ts < PROJECTS_CACHE_TTL) ? data : {};
+  } catch (e) {
+    return {};
+  }
 }
 
-function escHtml(str) {
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function writeProjectsCache(data) {
+  try {
+    sessionStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch (e) {
+    // sessionStorage unavailable (private mode, quota) — enrichment just
+    // won't be cached this session, nothing else depends on it.
+  }
+}
+
+function enrichProjects(list) {
+  const cache   = readProjectsCache();
+  const toFetch = list.filter(p => !cache[p.repo]);
+
+  list.forEach(p => { if (cache[p.repo]) applyEnrichment(p.repo, cache[p.repo]); });
+  if (!toFetch.length) return Promise.resolve();
+
+  return Promise.allSettled(toFetch.map(proj =>
+    fetch(`https://api.github.com/repos/aerusW/${proj.repo}`)
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(data => {
+        const enrichment = { language: data.language, pushedAt: data.pushed_at };
+        cache[proj.repo] = enrichment;
+        applyEnrichment(proj.repo, enrichment);
+      })
+      .catch(() => {}) // per-repo enrichment failure is silent, same reasoning as above
+  )).then(() => writeProjectsCache(cache));
+}
+
+function applyEnrichment(repo, { language, pushedAt }) {
+  const row = document.querySelector(`.project-row[data-repo="${CSS.escape(repo)}"]`);
+  if (!row) return;
+  if (pushedAt) row.title = 'Last pushed ' + new Date(pushedAt).toLocaleDateString();
+  if (!language) return;
+  const slot = row.querySelector('.pr-lang-slot');
+  const span = document.createElement('span');
+  span.className = 'pr-lang';
+  span.style.setProperty('--lang-color', LANG_COLORS[language] || '#888');
+  span.textContent = language;
+  slot.replaceChildren(span);
 }
 
 // ── Navigation ─────────────────────────────────────
@@ -706,13 +757,13 @@ document.addEventListener('DOMContentLoaded', () => {
   initialHashJump();
   initGallery();
   updateScrollProgress();
-  // Fetch once regardless of loader path so the Projects section never
-  // has to wait for it later.
-  const ghPromise = fetchGithub();
+  // Render + enrich once regardless of loader path so the Projects
+  // section never has to wait for it later.
+  const projectsPromise = loadProjects();
   // The loader itself has no GSAP dependency, so it runs the same way
   // whether or not the CDN loaded — only the rest of the site's entrance
   // animations are gated on window.gsap (see animateIn/.no-gsap).
-  runLoader(ghPromise);
+  runLoader(projectsPromise);
   // Safety net: if the loader's async sequence somehow never settles,
   // force it out of the way instead of leaving the site stuck behind it.
   setTimeout(() => { if (!loaded) onLoaderDone(); }, LOADER_CEILING + 5000);
