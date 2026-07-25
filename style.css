@@ -718,6 +718,14 @@ em[data-text].is-glitching::after {
   border-top: 1px solid var(--faint);
 }
 .project-row {
+  /* Hidden until animateIn() reveals it (see .no-gsap / reduced-motion
+     overrides below for the two cases where JS never runs that tween).
+     Without this, a row rendered by JS at page load just sits at the
+     browser's default opacity — fully visible off-screen — so on a
+     normal-flow mobile layout (no snap) it's already visible as you
+     scroll toward it, then snaps invisible and re-animates in the moment
+     the section crosses the IntersectionObserver threshold. */
+  opacity: 0;
   display: grid;
   grid-template-columns: 48px 1fr auto auto auto;
   align-items: center;
@@ -816,7 +824,8 @@ em[data-text].is-glitching::after {
   gap: 3rem;
   margin-top: 0.5rem;
 }
-.el-block {}
+/* Same reasoning as .project-row above — hidden until animateIn() reveals it. */
+.el-block { opacity: 0; }
 .el-label {
   font-family: var(--mono);
   font-size: 0.65rem;
@@ -1047,6 +1056,13 @@ em[data-text].is-glitching::after {
   #scroll-progress { display: block; }
   .nav-links { display: none; }
   #menu-toggle { display: flex; }
+
+  /* Auto-hiding header: hides on scroll-down, reappears on scroll-up
+     (see updateNavVisibility in main.js), so the bar doesn't permanently
+     eat into a phone's limited vertical space. */
+  #top-nav, #menu-toggle { transition: transform 0.35s var(--ease); }
+  body.nav-hidden #top-nav { transform: translateY(-100%); }
+  body.nav-hidden #menu-toggle { transform: translateY(-150%); }
 
   /* Gallery: two columns, fixed aspect ratio, no more JS justified-row
      math (that's skipped below 900px in JS — see applyJustified). Image
