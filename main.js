@@ -4,15 +4,20 @@
 
 'use strict';
 
+// ── GSAP failure fallback ──────────────────────────
+// If the CDN is blocked or slow, fall back to CSS-only final state
+// (see .no-gsap rules in style.css) instead of a blank page.
+if (!window.gsap) document.documentElement.classList.add('no-gsap');
+
 // ── State ──────────────────────────────────────────
 let current   = 0;
-let animating = false;
 let loaded    = false;
 let ghFetched = false;
 const TOTAL   = 6;
 
 // ── DOM ────────────────────────────────────────────
 const sections   = [...document.querySelectorAll('.s')];
+const sectionIds = sections.map(s => s.id);
 const dots       = [...document.querySelectorAll('.dot')];
 const navLinks   = [...document.querySelectorAll('.nav-link')];
 const counter    = document.getElementById('counter-current');
@@ -76,38 +81,74 @@ function runLoader() {
 function onLoaderDone() {
   loader.style.display = 'none';
   loaded = true;
-  activateSection(0, false);
+  // Only start watching sections once the loader is out of the way, so the
+  // entrance animation for whichever section is in view plays as a reveal
+  // rather than finishing silently behind the opaque loader.
+  sections.forEach(s => sectionObserver.observe(s));
   scheduleGlitch();
 }
 
-// ── Section activation ─────────────────────────────
-function activateSection(idx, withTransition) {
-  if (withTransition) {
-    if (animating || idx === current) return;
-    animating = true;
-    const from = current;
-    current = idx;
-
-    // Kick off GitHub fetch when projects section is first opened
-    if (idx === 2 && !ghFetched) fetchGithub();
-
-    ptIn(() => {
-      sections[from].classList.remove('active');
-      sections[idx].classList.add('active');
-      updateNav(idx);
-      animateIn(sections[idx]);
-      if (idx === 4) onGalleryActivate();
-      ptOut(() => { animating = false; });
-    });
-  } else {
-    sections.forEach(s => s.classList.remove('active'));
-    sections[idx].classList.add('active');
+// ── Section tracking (native scroll) ───────────────
+// Single observer drives three things as sections cross the viewport:
+// the current index (for nav/dots/counter + hash sync), the one-time
+// entrance animation, and lazy triggers (GitHub fetch, gallery layout).
+function onSectionIntersect(entries) {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const idx = sections.indexOf(entry.target);
     current = idx;
     updateNav(idx);
-    animateIn(sections[idx]);
+    history.replaceState(null, '', '#' + entry.target.id);
+
+    if (idx === 2 && !ghFetched) fetchGithub();
     if (idx === 4) onGalleryActivate();
+
+    if (!entry.target.dataset.animated) {
+      entry.target.dataset.animated = '1';
+      animateIn(entry.target);
+    }
+  });
+}
+const sectionObserver = new IntersectionObserver(onSectionIntersect, { threshold: 0.55 });
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Explicit navigation (nav links, dots, arrow keys, boundary loop).
+// Adjacent moves get a plain smooth scroll; jumps of 2+ sections get the
+// curtain, since instant-scrolling several screens is disorienting but a
+// one-step move isn't.
+function jumpTo(idx, { push = false } = {}) {
+  if (idx < 0 || idx >= TOTAL || idx === current) return;
+  const target  = sections[idx];
+  const dist    = Math.abs(idx - current);
+  const reduced = prefersReducedMotion();
+
+  if (push) history.pushState(null, '', '#' + target.id);
+
+  if (!reduced && dist >= 2 && window.gsap) {
+    ptIn(() => {
+      target.scrollIntoView({ behavior: 'instant', block: 'start' });
+      ptOut(() => {});
+    });
+  } else {
+    target.scrollIntoView({ behavior: reduced ? 'instant' : 'smooth', block: 'start' });
   }
 }
+
+// Scroll to the initial hash (if any) while the loader still covers the
+// screen, so there's no visible jump once it clears.
+function initialHashJump() {
+  const idx = sectionIds.indexOf(location.hash.slice(1));
+  if (idx > 0) sections[idx].scrollIntoView({ behavior: 'instant', block: 'start' });
+}
+
+// Back/forward and manual hash edits.
+window.addEventListener('hashchange', () => {
+  const idx = sectionIds.indexOf(location.hash.slice(1));
+  if (idx !== -1) jumpTo(idx, { push: false });
+});
 
 // ── Page transition ────────────────────────────────
 function ptIn(done) {
@@ -128,6 +169,9 @@ function ptOut(done) {
 const DELAY_MAP = { d1: 0.12, d2: 0.24, d3: 0.36, d4: 0.48, d5: 0.6 };
 
 function animateIn(section) {
+  if (!window.gsap) return;       // CSS .no-gsap rules already show the final state
+  if (prefersReducedMotion()) return; // CSS reduced-motion rules already show the final state
+
   const ups     = section.querySelectorAll('.up');
   const eyebrow = section.querySelector('.eyebrow');
 
@@ -256,55 +300,56 @@ function escHtml(str) {
 }
 
 // ── Navigation ─────────────────────────────────────
-let wheelLock = false;
-let wheelAcc  = 0;
-const WHEEL_T = 60;
+// Scrolling itself is native (scroll-snap-type on <html>) — nothing here
+// intercepts a normal wheel/touch/keyboard scroll. The only custom logic
+// is at the two ends of the page, where native scroll has nowhere further
+// to go: a continued attempt there loops to the opposite end (#3.1, #4).
+let boundaryLock = false;
+function tryLoop(idx) {
+  if (boundaryLock || !loaded) return;
+  boundaryLock = true;
+  jumpTo(idx, { push: true });
+  setTimeout(() => { boundaryLock = false; }, 900);
+}
 
 window.addEventListener('wheel', e => {
   if (!loaded) return;
-  e.preventDefault();
-  if (wheelLock || animating) return;
-
-  wheelAcc += e.deltaY;
-  if (Math.abs(wheelAcc) < WHEEL_T) return;
-
-  const dir = wheelAcc > 0 ? 1 : -1;
-  wheelAcc  = 0;
-  wheelLock = true;
-
-  const next = current + dir;
-  if (next >= 0 && next < TOTAL) activateSection(next, true);
-
-  setTimeout(() => { wheelLock = false; }, 1100);
-}, { passive: false });
-
-window.addEventListener('keydown', e => {
-  if (!loaded || animating) return;
-  const map = { ArrowDown: 1, ArrowUp: -1, PageDown: 1, PageUp: -1 };
-  const dir = map[e.key];
-  if (!dir) return;
-  const next = current + dir;
-  if (next >= 0 && next < TOTAL) activateSection(next, true);
-});
+  if (current === TOTAL - 1 && e.deltaY > 0) tryLoop(0);
+  else if (current === 0 && e.deltaY < 0) tryLoop(TOTAL - 1);
+}, { passive: true });
 
 let touchY0 = 0;
 window.addEventListener('touchstart', e => { touchY0 = e.touches[0].clientY; }, { passive: true });
 window.addEventListener('touchend', e => {
-  if (!loaded || animating) return;
+  if (!loaded) return;
   const dy = touchY0 - e.changedTouches[0].clientY;
   if (Math.abs(dy) < 50) return;
-  const next = current + (dy > 0 ? 1 : -1);
-  if (next >= 0 && next < TOTAL) activateSection(next, true);
+  if (current === TOTAL - 1 && dy > 0) tryLoop(0);
+  else if (current === 0 && dy < 0) tryLoop(TOTAL - 1);
+}, { passive: true });
+
+// Arrow keys are kept only as an explicit jump convenience; Space, PageUp/
+// PageDown and Home/End are left untouched so the scroll container handles
+// them natively.
+window.addEventListener('keydown', e => {
+  if (!loaded) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (current === TOTAL - 1) tryLoop(0); else jumpTo(current + 1, { push: true });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (current === 0) tryLoop(TOTAL - 1); else jumpTo(current - 1, { push: true });
+  }
 });
 
 dots.forEach(dot => {
-  dot.addEventListener('click', () => activateSection(+dot.dataset.idx, true));
+  dot.addEventListener('click', () => jumpTo(+dot.dataset.idx, { push: true }));
 });
 
 document.querySelectorAll('[data-to]').forEach(el => {
   el.addEventListener('click', e => {
     e.preventDefault();
-    activateSection(+el.dataset.to, true);
+    jumpTo(+el.dataset.to, { push: true });
   });
 });
 
@@ -368,7 +413,7 @@ function applyJustified() {
   });
 }
 
-// Called from activateSection when gallery (idx 4) becomes visible
+// Called from onSectionIntersect when gallery (idx 4) becomes visible
 function onGalleryActivate() {
   galSectionShown = true;
   if (galImgsReady) requestAnimationFrame(applyJustified);
@@ -392,6 +437,7 @@ function scheduleGlitch() {
 
 // ── Init ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  runLoader();
+  initialHashJump();
+  if (window.gsap) runLoader(); else onLoaderDone();
   initGallery();
 });

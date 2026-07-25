@@ -16,13 +16,15 @@
 
 /* ---- Reset ---- */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
 body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  overflow: hidden;
-  height: 100vh;
   cursor: none;
   -webkit-font-smoothing: antialiased;
 }
@@ -31,6 +33,25 @@ ul { list-style: none; }
 button { background: none; border: none; cursor: none; }
 ::selection { background: var(--accent); color: var(--text); }
 ::-webkit-scrollbar { display: none; }
+
+/* ---- Accessibility ---- */
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ---- GSAP-failure fallback: show final state instantly ---- */
+.no-gsap .up,
+.no-gsap .eyebrow,
+.no-gsap .el-block,
+.no-gsap .project-row {
+  transform: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+.no-gsap .fs-monogram .letter { transform: none !important; }
+.no-gsap #fs-loader,
+.no-gsap #page-transition { display: none !important; }
 
 /* ---- Film grain ---- */
 body::before {
@@ -277,22 +298,12 @@ body.is-hovering .cursor-dot { background: var(--accent); }
    ================================================ */
 #fp {
   position: relative;
-  height: 100vh;
-  overflow: hidden;
 }
 .s {
-  position: absolute;
-  inset: 0;
   display: flex;
   align-items: center;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-}
-.s.active {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: all;
+  min-height: 100svh;
+  scroll-snap-align: start;
 }
 .s-inner {
   width: 100%;
@@ -775,8 +786,11 @@ body.is-hovering .cursor-dot { background: var(--accent); }
    GALLERY
    ================================================ */
 
-/* Gallery: override flex centering so the grid can fill the viewport */
-#gallery { align-items: stretch; }
+/* Gallery: override flex centering so the grid can fill the viewport.
+   Needs an explicit height (not just min-height) so .s-inner--gallery's
+   height:100% and the JS justified-layout clientHeight read stay bounded
+   to one screen instead of growing with content. */
+#gallery { align-items: stretch; height: 100svh; }
 
 .s-inner--gallery {
   padding-top: 4.5rem;
@@ -921,4 +935,27 @@ body.is-hovering .cursor-dot { background: var(--accent); }
   }
   .gal-item:nth-child(1) { grid-column: span 2; }
   .gal-item:nth-child(4) { grid-column: span 1; }
+}
+
+/* Mandatory snapping can trap content taller than the viewport on short
+   laptop screens (About / Elsewhere). Fall back to proximity there. */
+@media (max-height: 700px) {
+  html { scroll-snap-type: y proximity; }
+}
+
+/* ================================================
+   REDUCED MOTION — instant state change, not slower motion
+   ================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .up, .eyebrow, .el-block, .project-row {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  #page-transition, #fs-loader { transition: none !important; }
 }
