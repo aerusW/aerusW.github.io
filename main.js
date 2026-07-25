@@ -33,7 +33,6 @@ const cursorEl  = document.getElementById('cursor');
 const cDot      = cursorEl.querySelector('.cursor-dot');
 const cRing     = cursorEl.querySelector('.cursor-ring');
 
-const heroName  = document.querySelector('.hero-name');
 const glitchLn  = document.getElementById('glitch-line');
 
 // ── Cursor ─────────────────────────────────────────
@@ -143,7 +142,9 @@ function onLoaderDone() {
   // entrance animation for whichever section is in view plays as a reveal
   // rather than finishing silently behind the opaque loader.
   sections.forEach(s => sectionObserver.observe(s));
-  scheduleGlitch();
+  // First burst no earlier than 2.5s after the loader clears (see
+  // syncGlitchScheduling's glitchStarted branch).
+  syncGlitchScheduling();
 }
 
 // ── Section tracking (native scroll) ───────────────
@@ -359,32 +360,7 @@ function escHtml(str) {
 
 // ── Navigation ─────────────────────────────────────
 // Scrolling itself is native (scroll-snap-type on <html>) — nothing here
-// intercepts a normal wheel/touch/keyboard scroll. The only custom logic
-// is at the two ends of the page, where native scroll has nowhere further
-// to go: a continued attempt there loops to the opposite end (#3.1, #4).
-let boundaryLock = false;
-function tryLoop(idx) {
-  if (boundaryLock || !loaded) return;
-  boundaryLock = true;
-  jumpTo(idx, { push: true });
-  setTimeout(() => { boundaryLock = false; }, 900);
-}
-
-window.addEventListener('wheel', e => {
-  if (!loaded) return;
-  if (current === TOTAL - 1 && e.deltaY > 0) tryLoop(0);
-  else if (current === 0 && e.deltaY < 0) tryLoop(TOTAL - 1);
-}, { passive: true });
-
-let touchY0 = 0;
-window.addEventListener('touchstart', e => { touchY0 = e.touches[0].clientY; }, { passive: true });
-window.addEventListener('touchend', e => {
-  if (!loaded) return;
-  const dy = touchY0 - e.changedTouches[0].clientY;
-  if (Math.abs(dy) < 50) return;
-  if (current === TOTAL - 1 && dy > 0) tryLoop(0);
-  else if (current === 0 && dy < 0) tryLoop(TOTAL - 1);
-}, { passive: true });
+// intercepts a normal wheel/touch scroll.
 
 // Arrow keys are kept only as an explicit jump convenience; Space, PageUp/
 // PageDown and Home/End are left untouched so the scroll container handles
@@ -393,10 +369,10 @@ window.addEventListener('keydown', e => {
   if (!loaded) return;
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    if (current === TOTAL - 1) tryLoop(0); else jumpTo(current + 1, { push: true });
+    jumpTo(current + 1, { push: true });
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    if (current === 0) tryLoop(TOTAL - 1); else jumpTo(current - 1, { push: true });
+    jumpTo(current - 1, { push: true });
   }
 });
 
@@ -478,19 +454,112 @@ function onGalleryActivate() {
 }
 
 // ── Glitch ─────────────────────────────────────────
-function triggerGlitch() {
-  if (!heroName) { scheduleGlitch(); return; }
-  heroName.classList.add('is-glitching');
-  glitchLn.classList.add('active');
-  setTimeout(() => {
-    heroName.classList.remove('is-glitching');
-    glitchLn.classList.remove('active');
-    scheduleGlitch();
-  }, 620);
+// Seeded per-burst randomisation (via CSS custom properties, see
+// style.css) so no two bursts are byte-identical, gated on the hero
+// actually being on screen and the tab actually being visible — an
+// ambient effect nobody's looking at is just wasted paint.
+const glitchLines = [...document.querySelectorAll('.hero-name em[data-text]')];
+let heroVisible     = false;
+let glitchTimer     = null;
+let glitchStarted   = false;
+
+function glitchRand(min, max) { return min + Math.random() * (max - min); }
+
+function glitchActive() {
+  return loaded && heroVisible && document.visibilityState === 'visible' && !prefersReducedMotion();
 }
 
-function scheduleGlitch() {
-  setTimeout(triggerGlitch, 5000 + Math.random() * 7000);
+function syncGlitchScheduling() {
+  if (glitchActive()) {
+    if (!glitchTimer) {
+      const delay = glitchStarted ? glitchRand(6000, 13000) : glitchRand(2500, 3000);
+      glitchStarted = true;
+      glitchTimer = setTimeout(fireGlitch, delay);
+    }
+  } else if (glitchTimer) {
+    clearTimeout(glitchTimer);
+    glitchTimer = null;
+  }
+}
+
+function fireGlitch() {
+  glitchTimer = null;
+  runGlitchBurst();
+  runScanLine();
+  syncGlitchScheduling();
+}
+
+// A burst is 3-6 frames, each held 40-90ms, each with its own randomised
+// slice band / offset / skew, snapped (no transition) rather than tweened
+// to keep the harsh, stepped character. Some frames are left "clean" (no
+// offset) so the burst reads as a flicker rather than one continuous shake.
+function runGlitchBurst() {
+  if (!glitchLines.length) return;
+  const frameCount = 3 + Math.floor(Math.random() * 4);
+  let i = 0;
+
+  (function frame() {
+    if (i >= frameCount) {
+      clearGlitchVars();
+      return;
+    }
+    const hit = Math.random() < 0.7;
+    setGlitchVars(hit);
+    i++;
+    setTimeout(frame, glitchRand(40, 90));
+  })();
+}
+
+function setGlitchVars(hit) {
+  glitchLines.forEach(el => {
+    el.classList.add('is-glitching');
+    if (!hit) { el.style.setProperty('--glitch-op', '0'); return; }
+    el.style.setProperty('--glitch-op', String(glitchRand(0.6, 0.95).toFixed(2)));
+    el.style.setProperty('--gx', glitchRand(-10, 10).toFixed(1) + 'px');
+    el.style.setProperty('--gy', glitchRand(-2, 2).toFixed(1) + 'px');
+    el.style.setProperty('--skew', glitchRand(-2.5, 2.5).toFixed(2) + 'deg');
+    const top = glitchRand(5, 75);
+    el.style.setProperty('--slice-top', top.toFixed(1) + '%');
+    el.style.setProperty('--slice-bot', (100 - top - glitchRand(8, 22)).toFixed(1) + '%');
+    const top2 = glitchRand(5, 75);
+    el.style.setProperty('--slice-top2', top2.toFixed(1) + '%');
+    el.style.setProperty('--slice-bot2', (100 - top2 - glitchRand(8, 22)).toFixed(1) + '%');
+  });
+}
+
+function clearGlitchVars() {
+  const props = ['--glitch-op', '--gx', '--gy', '--skew', '--slice-top', '--slice-bot', '--slice-top2', '--slice-bot2'];
+  glitchLines.forEach(el => {
+    el.classList.remove('is-glitching');
+    props.forEach(p => el.style.removeProperty(p));
+  });
+}
+
+function runScanLine() {
+  if (!glitchLn) return;
+  glitchLn.classList.remove('active');
+  void glitchLn.offsetWidth; // restart the animation
+  glitchLn.classList.add('active');
+}
+
+const heroObserver = new IntersectionObserver(entries => {
+  heroVisible = entries[0].isIntersecting;
+  syncGlitchScheduling();
+}, { threshold: 0.2 });
+const homeSection = document.getElementById('home');
+if (homeSection) heroObserver.observe(homeSection);
+
+document.addEventListener('visibilitychange', syncGlitchScheduling);
+
+// Hovering the nav logo fires one burst on demand, turning an ambient
+// effect into something the visitor discovers.
+const navLogo = document.querySelector('.nav-logo');
+if (navLogo) {
+  navLogo.addEventListener('pointerenter', () => {
+    if (prefersReducedMotion()) return;
+    runGlitchBurst();
+    runScanLine();
+  });
 }
 
 // ── Init ───────────────────────────────────────────
