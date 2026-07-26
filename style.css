@@ -221,6 +221,12 @@ body.is-hovering .cursor-dot { background: var(--accent); }
   align-items: center;
   justify-content: space-between;
   padding: 1.75rem 3.5rem;
+  /* Scrim so scrolled content fades out behind the bar instead of hard-
+     colliding with the logo/links. Over the hero (same near-black bg) it's
+     invisible; it only shows as a fade once real content is behind it.
+     Lives on the bar itself, so it slides away with the mobile auto-hide. */
+  background: linear-gradient(to bottom,
+    var(--bg) 0%, var(--bg) 45%, rgba(8, 8, 8, 0.82) 72%, transparent 100%);
 }
 .nav-logo {
   font-family: var(--mono);
@@ -297,6 +303,18 @@ body.is-hovering .cursor-dot { background: var(--accent); }
   display: flex;
   align-items: center;
   gap: 0.6rem;
+}
+/* Soft dark halo so the counter stays legible over any content that
+   scrolls into the bottom-left corner. Invisible over the page's own
+   near-black bg; only reads when brighter content is behind it. */
+#section-counter::before {
+  content: '';
+  position: absolute;
+  left: -1.5rem; bottom: -1.5rem;
+  right: -2rem; top: -1.25rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at bottom left, var(--bg) 0%, rgba(8, 8, 8, 0.55) 45%, transparent 75%);
 }
 #section-counter span {
   font-family: var(--mono);
@@ -1047,12 +1065,16 @@ em[data-text].is-glitching::after {
   .hero-name { font-size: clamp(3rem, 10vw, 6rem); }
   .contact-heading { font-size: clamp(2.5rem, 9vw, 5rem); }
   .hero-bg-number { display: none; }
-  #section-counter { left: 2rem; }
   .gallery-head { grid-template-columns: 1fr; gap: 0.5rem; }
 
   /* Real nav replacement, not just a hidden list: side dots -> top
-     progress rule, horizontal links -> hamburger + full-screen menu. */
+     progress rule, horizontal links -> hamburger + full-screen menu. The
+     bottom section-counter is dropped too — it's a fixed, un-hiding,
+     transparent element that scrolled content passed straight under in
+     normal-flow mobile layout, and the top progress rule already answers
+     "where am I on the page". */
   #side-dots { display: none; }
+  #section-counter { display: none; }
   #scroll-progress { display: block; }
   .nav-links { display: none; }
   #menu-toggle { display: flex; }
