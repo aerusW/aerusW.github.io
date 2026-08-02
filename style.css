@@ -226,7 +226,7 @@ body.is-hovering .cursor-dot { background: var(--accent); }
      invisible; it only shows as a fade once real content is behind it.
      Lives on the bar itself, so it slides away with the mobile auto-hide. */
   background: linear-gradient(to bottom,
-    var(--bg) 0%, var(--bg) 45%, rgba(8, 8, 8, 0.82) 72%, transparent 100%);
+    var(--bg) 0%, var(--bg) 45%, var(--bg) 50%, transparent 100%);
 }
 .nav-logo {
   font-family: var(--mono);
